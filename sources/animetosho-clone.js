@@ -3,10 +3,30 @@ import AbstractSource from './abstract.js'
 const BASE_URL = 'http://localhost:8002'
 const QUALITIES = ['2160', '1080', '720', '540', '480']
 
-function extractHashFromMagnet(magnet) {
+function magnetToInfoHashHex(magnet) {
   if (!magnet) return ''
   const match = magnet.match(/xt=urn:btih:([a-zA-Z0-9]+)/)
-  return match ? match[1] : ''
+  if (!match) return ''
+  const raw = match[1]
+  if (raw.length === 40 && /^[0-9a-fA-F]+$/.test(raw)) return raw.toLowerCase()
+  if (raw.length === 32) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    let bits = 0
+    let value = 0
+    const bytes = []
+    for (const c of raw.toUpperCase()) {
+      const idx = alphabet.indexOf(c)
+      if (idx < 0) continue
+      value = (value << 5) | idx
+      bits += 5
+      if (bits >= 8) {
+        bits -= 8
+        bytes.push((value >> bits) & 0xff)
+      }
+    }
+    if (bytes.length === 20) return bytes.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }
+  return ''
 }
 
 function matchesExclusions(name, exclusions) {
@@ -34,7 +54,7 @@ export default new (class AnimeToshoClone extends AbstractSource {
 
   #map(entries, batch = false) {
     return entries.map(
-      ({ id, name, magnet, size, size_str, upload_date, source_url, seeders = 0, leechers = 0 }) => ({
+      ({ id, name, magnet, size, size_str, upload_date, source_url, seeders = 0, leechers = 0, info_hash }) => ({
         title: name,
         link: magnet || source_url || '',
         id,
@@ -43,7 +63,7 @@ export default new (class AnimeToshoClone extends AbstractSource {
         downloads: 0,
         accuracy: 'medium',
         type: batch ? 'batch' : undefined,
-        hash: extractHashFromMagnet(magnet),
+        hash: info_hash || magnetToInfoHashHex(magnet),
         size: size || 0,
         date: upload_date ? new Date(upload_date) : new Date(),
       })
