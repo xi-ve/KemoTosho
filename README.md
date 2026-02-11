@@ -1,6 +1,6 @@
 # KemoTosho
 
-Shiru extension for my AnimeTosho clone claled KemoTosho.
+Shiru extension for my AnimeTosho clone called KemoTosho.
 
 ## Installation
 
