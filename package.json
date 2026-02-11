@@ -1,7 +1,7 @@
 {
-  "name": "@animetosho-clone/shiru",
-  "version": "1.0.1",
-  "description": "Anime Tosho Clone extension for Shiru",
+  "name": "@kemotosho/shiru",
+  "version": "1.0.2",
+  "description": "KemoTosho extension for Shiru",
   "license": "GPL-3.0",
   "main": "index.json",
   "types": "index.d.ts"

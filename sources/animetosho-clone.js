@@ -1,6 +1,6 @@
 import AbstractSource from './abstract.js'
 
-const BASE_URL = 'http://localhost:8002'
+const BASE_URL = 'https://api.kemotosho.xive.cc'
 const QUALITIES = ['2160', '1080', '720', '540', '480']
 
 function magnetToInfoHashHex(magnet) {
@@ -54,14 +54,14 @@ export default new (class AnimeToshoClone extends AbstractSource {
 
   #map(entries, batch = false) {
     return entries.map(
-      ({ id, name, magnet, size, size_str, upload_date, source_url, seeders = 0, leechers = 0, info_hash }) => ({
+      ({ id, name, magnet, size, size_str, upload_date, source_url, seeders = 0, leechers = 0, info_hash, anidb_aid, anidb_eid, anidb_fid }) => ({
         title: name,
         link: magnet || source_url || '',
         id,
         seeders: Math.min(seeders || 0, 29999),
         leechers: Math.min(leechers || 0, 29999),
         downloads: 0,
-        accuracy: 'medium',
+        accuracy: anidb_fid ? 'high' : 'medium',
         type: batch ? 'batch' : undefined,
         hash: info_hash || magnetToInfoHashHex(magnet),
         size: size || 0,
@@ -70,8 +70,15 @@ export default new (class AnimeToshoClone extends AbstractSource {
     )
   }
 
-  async #query(searchString, { resolution, exclusions, episodeCount }) {
-    const url = `${BASE_URL}/api/torrents/?search=${encodeURIComponent(searchString)}&per_page=100`
+  async #query(searchString, { resolution, exclusions, episodeCount, anidbAid }) {
+    const params = new URLSearchParams({ per_page: '100' })
+    if (anidbAid) {
+      params.set('anidb_aid', String(anidbAid))
+    }
+    if (searchString) {
+      params.set('search', searchString)
+    }
+    const url = `${BASE_URL}/api/torrents/?${params.toString()}`
     const res = await fetch(url)
     if (!res.ok) return []
     const data = await res.json()
@@ -87,22 +94,22 @@ export default new (class AnimeToshoClone extends AbstractSource {
     return filtered.length ? this.#map(!episodeCount ? filtered : filtered.filter((t) => (t.file_count || 0) > 1)) : []
   }
 
-  async single({ titles, resolution, exclusions }) {
-    if (!titles?.length) throw new Error('No titles provided')
-    const search = this.#buildSearchString(titles, exclusions)
-    return this.#query(search, { resolution, exclusions })
+  async single({ titles, resolution, exclusions, anidbAid }) {
+    if (!titles?.length && !anidbAid) throw new Error('No titles provided')
+    const search = this.#buildSearchString(titles || [], exclusions)
+    return this.#query(search, { resolution, exclusions, anidbAid })
   }
 
-  async batch({ titles, resolution, episodeCount, exclusions }) {
-    if (!titles?.length) throw new Error('No titles provided')
-    const search = this.#buildSearchString(titles, exclusions)
-    return this.#query(search, { resolution, exclusions, episodeCount }, true)
+  async batch({ titles, resolution, episodeCount, exclusions, anidbAid }) {
+    if (!titles?.length && !anidbAid) throw new Error('No titles provided')
+    const search = this.#buildSearchString(titles || [], exclusions)
+    return this.#query(search, { resolution, exclusions, episodeCount, anidbAid }, true)
   }
 
-  async movie({ titles, resolution, exclusions }) {
-    if (!titles?.length) throw new Error('No titles provided')
-    const search = this.#buildSearchString(titles, exclusions)
-    return this.#query(search, { resolution, exclusions })
+  async movie({ titles, resolution, exclusions, anidbAid }) {
+    if (!titles?.length && !anidbAid) throw new Error('No titles provided')
+    const search = this.#buildSearchString(titles || [], exclusions)
+    return this.#query(search, { resolution, exclusions, anidbAid })
   }
 
   async validate() {
